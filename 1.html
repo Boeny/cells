@@ -1,0 +1,106 @@
+<html>
+<body>
+<script>
+function getCellDefaultState() {
+  return {
+    type: 'default',
+    growingSpeed: 0.2,
+    width: 20,
+    height: 20,
+    maxWidthBeforeDivide: 40,
+    divisionsCount: 0,
+    maxDivisionsBeforeDie: 3,
+    reducingSpeed: -0.5
+  };
+}
+
+function getDefaultState() {
+  return {
+    maxCells: 100,
+    cells: [getCellDefaultState()]
+  };
+}
+
+const state = getDefaultState();
+
+// --- cell actions
+
+function modWidth(props) {
+  props.width += props[props.type + 'Speed'];
+}
+
+function divide(props) {
+  state.cells.push( getCellDefaultState() );
+  props.divisionsCount += 1;
+}
+
+function die(props) {
+  const index = state.cells.indexOf(props);
+  state.cells.splice(index, 1);
+}
+
+function getCellNextType(props) {
+  switch (props.type) {
+    case 'growing':
+      return props.width >= props.maxWidthBeforeDivide ? 'division': props.type;
+    case 'division':
+      return props.divisionsCount < props.maxDivisionBeforeDie ? 'growing' : 'reducing';
+    case 'reducing':
+      return props.width <= 0 ? 'die' : props.type;
+  }
+}
+
+function setCellNextType(props) {
+  const type = getCellNextType(props);
+  if (type === 'die') {
+    die(props);
+  } else {
+    props.type = type;
+  }
+}
+
+function cellAction(props) {
+  switch (props.type) {
+    case 'growing':
+    case 'reducing':
+      modWidth(props);
+      setCellNextType(props);
+      break;
+    case 'division':
+      divide(props);
+      setCellNextType(props);
+      break;
+  }
+}
+
+// --- views
+
+function cell(props) {
+  return '<div\
+  divisions="'+props.divisionsCount+'"\
+  style="background: linear-gradient(to left, white, gray); width: '+props.width+
+  '; height: '+props.height+'"\
+  ></div>';
+}
+
+function observedCell(props) {
+  cellAction(props);
+  return cell(props);
+}
+
+function cells(props) {
+  return props.map(observedCell).join('');
+}
+
+function render(props) {
+  return cells(props.cells);
+}
+
+function main() {
+  requestAnimationFrame(main);
+  document.body.innerHTML = render(state);
+}
+main();
+</script>
+</body>
+</html>
