@@ -9,14 +9,14 @@ function getCellDefaultState() {
     height: 20,
     maxWidthBeforeDivide: 40,
     divisionsCount: 0,
-    maxDivisionsBeforeDie: 3,
+    maxDivisionsBeforeDie: 5,
     reducingSpeed: -0.5
   };
 }
 
 function getDefaultState() {
   return {
-    maxCells: 100,
+    maxCells: 10,
     cells: [getCellDefaultState()]
   };
 }
@@ -30,7 +30,10 @@ function modWidth(props) {
 }
 
 function divide(props) {
-  state.cells.push( getCellDefaultState() );
+  if (state.cells.length < state.maxCells) {
+    state.cells.push( getCellDefaultState() );
+  }
+  props.width /= 2;
   props.divisionsCount += 1;
 }
 
@@ -41,10 +44,12 @@ function die(props) {
 
 function getCellNextType(props) {
   switch (props.type) {
+    case 'default':
+      return 'growing';
     case 'growing':
       return props.width >= props.maxWidthBeforeDivide ? 'division': props.type;
     case 'division':
-      return props.divisionsCount < props.maxDivisionBeforeDie ? 'growing' : 'reducing';
+      return props.divisionsCount < props.maxDivisionsBeforeDie ? 'growing' : 'reducing';
     case 'reducing':
       return props.width <= 0 ? 'die' : props.type;
   }
@@ -64,13 +69,12 @@ function cellAction(props) {
     case 'growing':
     case 'reducing':
       modWidth(props);
-      setCellNextType(props);
       break;
     case 'division':
       divide(props);
-      setCellNextType(props);
       break;
   }
+  setCellNextType(props);
 }
 
 // --- views
@@ -78,18 +82,18 @@ function cellAction(props) {
 function cell(props) {
   return '<div\
   divisions="'+props.divisionsCount+'"\
-  style="background: linear-gradient(to left, white, gray); width: '+props.width+
+  style="background: linear-gradient(to left, #8a8a8a, #fff); width: '+props.width+
   '; height: '+props.height+'"\
   ></div>';
 }
 
-function observedCell(props) {
+function activeCell(props) {
   cellAction(props);
   return cell(props);
 }
 
 function cells(props) {
-  return props.map(observedCell).join('');
+  return props.map(activeCell).join('');
 }
 
 function render(props) {
