@@ -1,110 +1,75 @@
 <html>
 <body>
+<div id="app"></div>
 <script>
-function getCellDefaultState() {
-  return {
-    type: 'default',
-    growingSpeed: 0.2,
-    width: 20,
-    height: 20,
-    maxWidthBeforeDivide: 40,
-    divisionsCount: 0,
-    maxDivisionsBeforeDie: 5,
-    reducingSpeed: -0.5
-  };
-}
-
-function getDefaultState() {
-  return {
-    maxCells: 10,
-    cells: [getCellDefaultState()]
-  };
-}
-
-const state = getDefaultState();
-
-// --- cell actions
-
-function modWidth(props) {
-  props.width += props[props.type + 'Speed'];
-}
-
-function divide(props) {
-  if (state.cells.length < state.maxCells) {
-    state.cells.push( getCellDefaultState() );
+function hasChanged(component, props) {
+  if (component.props !== props) {
+    return true;
   }
-  props.width /= 2;
-  props.divisionsCount += 1;
+  const keys = Object.keys(props);
+  let key, value;
+  for (let i = 0; i < keys.length; i += 1) {
+    key = keys[i];
+    if (key === 'cached' || key === 'props') {
+      continue;
+    }
+    currentValue = component.props[key];
+    // if at least one property has changed
+    if (
+        props[key] !== currentValue ||
+        currentValue instanceof Array &&
+        props[key].length !== currentValue.length
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
-function die(props) {
-  const index = state.cells.indexOf(props);
-  state.cells.splice(index, 1);
-}
-
-function getCellNextType(props) {
-  switch (props.type) {
-    case 'default':
-      return 'growing';
-    case 'growing':
-      return props.width >= props.maxWidthBeforeDivide ? 'division': props.type;
-    case 'division':
-      return props.divisionsCount < props.maxDivisionsBeforeDie ? 'growing' : 'reducing';
-    case 'reducing':
-      return props.width <= 0 ? 'die' : props.type;
+function createElement(component, props, render) {
+  if (hasChanged(component, props)) {// rerender the result
+    component.props = props;
+    component.cached = render();
   }
 }
 
-function setCellNextType(props) {
-  const type = getCellNextType(props);
-  if (type === 'die') {
-    die(props);
-  } else {
-    props.type = type;
-  }
-}
-
-function cellAction(props) {
-  switch (props.type) {
-    case 'growing':
-    case 'reducing':
-      modWidth(props);
-      break;
-    case 'division':
-      divide(props);
-      break;
-  }
-  setCellNextType(props);
-}
-
-// --- views
-
+/**
+ * props: Cell = {width: number; height: number}
+ * @returns string
+ */
 function cell(props) {
-  return '<div\
-  divisions="'+props.divisionsCount+'"\
-  style="background: linear-gradient(to left, #8a8a8a, #fff); width: '+props.width+
-  '; height: '+props.height+'"\
-  ></div>';
+  createElement(this, props, () => '<div style="display: inline-block; background: linear-gradient(to left, #8a8a8a, white); width: '+props.width+'; height: '+props.height+'"></div>');
 }
 
-function activeCell(props) {
-  cellAction(props);
-  return cell(props);
-}
-
+/**
+ * props: {cells: Cell[]}
+ * @returns string
+ */
 function cells(props) {
-  return props.map(activeCell).join('');
+  createElement(this, props, () => {
+    let result = '';
+    for (let i = 0; i < props.cells.length; i += 1) {
+      result += (new cell(props.cells[i])).cached;
+    }
+    return result;
+  });
 }
 
-function render(props) {
-  return cells(props.cells);
-}
+const state = {
+  cells: [{width: 20, height: 20}]
+};
 
-function main() {
-  requestAnimationFrame(main);
-  document.body.innerHTML = render(state);
-}
-main();
+document.addEventListener('DOMContentLoaded', () => {
+  const root = document.getElementById('app');
+  function render(props) {
+    createElement(this, props, () => root.innerHTML = (new cells(props)).cached);
+  }
+  function main() {
+    requestAnimationFrame(main);
+    new render(state);
+  }
+  main();
+});
 </script>
 </body>
 </html>
