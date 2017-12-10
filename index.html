@@ -8,9 +8,13 @@ function getCellDefaultState() {
     width: 20,
     height: 20,
     maxWidthBeforeDivide: 40,
-    divisionsCount: 0,
-    maxDivisionsBeforeDie: 5,
-    reducingSpeed: -0.5
+    reducingSpeed: -0.5,
+    startConc: 1,
+    endConc: 0,
+    concLength: 100,
+    get concPerPix() {
+      return 1 / this.concLength;
+    }
   };
 }
 
@@ -26,15 +30,22 @@ const state = getDefaultState();
 // --- cell actions
 
 function modWidth(props) {
-  props.width += props[props.type + 'Speed'];
+  props.endConc = props.startConc - props.width * props.concPerPix;
+  if (props.endConc < 0) {
+    props.endConc = 0;
+  } else {
+    props.width += props[props.type + 'Speed'];
+  }
 }
 
 function divide(props) {
   if (state.cells.length < state.maxCells) {
-    state.cells.push( getCellDefaultState() );
+    const newCell = getCellDefaultState();
+    props.endConc /= 2;
+    newCell.startConc = props.endConc;
+    state.cells.push(newCell);
+    props.width /= 2;
   }
-  props.width /= 2;
-  props.divisionsCount += 1;
 }
 
 function die(props) {
@@ -42,54 +53,100 @@ function die(props) {
   state.cells.splice(index, 1);
 }
 
-function getCellNextType(props) {
+function cellAction(props) {
+  let nextType;
   switch (props.type) {
     case 'default':
-      return 'growing';
+      nextType = 'growing';
+      break;
     case 'growing':
-      return props.width >= props.maxWidthBeforeDivide ? 'division': props.type;
-    case 'division':
-      return props.divisionsCount < props.maxDivisionsBeforeDie ? 'growing' : 'reducing';
-    case 'reducing':
-      return props.width <= 0 ? 'die' : props.type;
-  }
-}
-
-function setCellNextType(props) {
-  const type = getCellNextType(props);
-  if (type === 'die') {
-    die(props);
-  } else {
-    props.type = type;
-  }
-}
-
-function cellAction(props) {
-  switch (props.type) {
-    case 'growing':
-    case 'reducing':
       modWidth(props);
+      nextType = props.width >= props.maxWidthBeforeDivide ? 'division': props.type;
       break;
     case 'division':
       divide(props);
+      nextType = 'growing';
+      break;
+    case 'reducing':
+      modWidth(props);
+      nextType = props.width <= 0 ? 'die' : props.type;
       break;
   }
-  setCellNextType(props);
+  if (nextType === 'die') {
+    die(props);
+  } else {
+    props.type = nextType;
+  }
+}
+
+// --- utils
+
+function style(o) {
+  return Object.keys(o)
+  .map(key => [key, o[key]].join(':'))
+  .join(';');
+}
+
+function rgb(conc) {
+  const color = Math.round((1 - conc) * 255);
+  return 'rgb('+[color, color, color].join(',')+')';
+}
+
+function div(_style, content='') {
+  return '<div style="'+style(_style)+'">'+content+'</div>';
 }
 
 // --- views
 
+/**
+ * props: {
+    width: number;
+    height: number;
+    color: string;
+    top: number;
+    left: number;
+  }
+ */
+function organella(props) {
+  const { color, ...rest } = props;
+  return div({
+    position: 'absolute',
+    background: color,
+    ...rest
+  });
+}
+
+function dividerOrgan() {
+  return organella({
+    color: 'red',
+    width: 10,
+    height: 10,
+    top: 5,
+    left: 5
+  });
+}
+
+/**
+ * props: {
+    width: string;
+    height: string;
+    startConc: number;
+    endConc: number;
+  }
+ */
 function cell(props) {
-  return '<div\
-  divisions="'+props.divisionsCount+'"\
-  style="background: linear-gradient(to left, #8a8a8a, #fff); width: '+props.width+
-  '; height: '+props.height+'"\
-  ></div>';
+  return div({
+    position: 'relative',
+    border: '1px solid #444',
+    background: 'linear-gradient(to right,'+rgb(props.startConc)+','+rgb(props.endConc)+')',
+    ...props
+  }, props.startConc < 0.2 ? dividerOrgan() : '');
 }
 
 function activeCell(props) {
   cellAction(props);
-  return cell(props);
+  const { width, height, startConc, endConc } = props;
+  return cell({ width, height, startConc, endConc });
 }
 
 function cells(props) {
