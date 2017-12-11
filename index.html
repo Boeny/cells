@@ -1,28 +1,40 @@
 <html>
 <body>
 <script>
-function getCellDefaultState() {
+function getOrganellaDefaultState() {
+  return {
+    substance: ''
+  };
+}
+
+function getCellDefaultState(parent = null) {
   return {
     type: 'default',
+    parent,
     growingSpeed: 0.2,
     width: 20,
     height: 20,
     maxWidthBeforeDivide: 40,
     reducingSpeed: -0.5,
     organellas: [],
-    divider: {color: 'red', width: 10, height: 10, top: 5, left: 5},
-    initConc: 0.2,
-    startConc: 1,
-    get endConc() {
-      return this.startConc - this.width / this.concLength;
+    divider: {substance: 'divider', color: 'red', width: 10, height: 10},
+    initConc: 0.1,
+    get startConc() {
+      return this.substances['divider'] || 0;
     },
-    concLength: 100
+    set startConc(conc) {
+      this.substances['divider'] = conc;
+    },
+    get endConc() {
+      return this.concLength > 0 ? this.startConc - this.width / this.concLength : 0;
+    },
+    concLength: 10,
+    substances: {}
   };
 }
 
 function getDefaultState() {
   return {
-    maxCells: 10,
     cells: [getCellDefaultState()]
   };
 }
@@ -32,18 +44,14 @@ const state = getDefaultState();
 // --- cell actions
 
 function modWidth(props) {
-  if (props.endConc >= 0) {
-    props.width += props[props.type + 'Speed'];
-  }
+  props.width += props[props.type + 'Speed'];
 }
 
 function divide(props) {
-  if (state.cells.length < state.maxCells) {
-    const newCell = getCellDefaultState();
-    newCell.startConc = props.endConc;
-    state.cells.push(newCell);
-    props.width /= 2;
-  }
+  props.width /= 2;
+  const newCell = getCellDefaultState(props);
+  const index = state.cells.indexOf(props) + 1;
+  state.cells.splice(index, 0, newCell);
 }
 
 function die(props) {
@@ -52,30 +60,51 @@ function die(props) {
 }
 
 function cellAction(props) {
-  let nextType;
   switch (props.type) {
     case 'default':
-      props.organellas.push(props.divider);
-      nextType = 'growing';
+      if (props.startConc < props.initConc) {
+        props.startConc = 0;
+        props.organellas.push(props.divider);
+      }
+      props.type = 'growing';
       break;
     case 'growing':
       modWidth(props);
-      nextType = props.width >= props.maxWidthBeforeDivide ? 'division': props.type;
+      if (props.width >= props.maxWidthBeforeDivide) {
+        props.type = 'division';
+      }
       break;
     case 'division':
-      divide(props);
-      nextType = 'growing';
+      if (props.endConc > 0) {
+        divide(props);
+        props.type = 'growing';
+      }
       break;
     case 'reducing':
       modWidth(props);
-      nextType = props.width <= 0 ? 'die' : props.type;
+      if (props.width <= 0) {
+        die(props);
+      }
       break;
   }
-  if (nextType === 'die') {
-    die(props);
-  } else {
-    props.type = nextType;
+}
+
+// --- organella actions
+
+const produce = containerProps => substance => {
+  let conc = containerProps.substances[substance];
+  if (conc < 0) {
+    containerProps.substances[substance] = 0;
+    return;
   }
+  const speed = conc < 0.5 ? 0.1 : (1 - conc)/5;
+  conc += speed;
+  if (conc > 1) {
+    containerProps.substances[substance] = 1;
+    containerProps.concLength += 1;
+    return;
+  }
+  containerProps.substances[substance] = conc;
 }
 
 // --- utils
@@ -95,6 +124,10 @@ function div(_style, content='') {
   return '<div style="'+style(_style)+'">'+content+'</div>';
 }
 
+function divs(arr, forEachDiv) {
+  return arr.map(forEachDiv).join('');
+}
+
 // --- views
 
 /**
@@ -109,43 +142,58 @@ function div(_style, content='') {
 function organella(props) {
   const { color, ...rest } = props;
   return div({
-    position: 'absolute',
     background: color,
     ...rest
   });
+}
+
+function activeOrganella(props) {
+  const {
+    produce, substance,
+    width, height, color
+  } = props;
+  produce(substance);
+  return organella({ width, height, color });
 }
 
 /**
  * props: {
     width: string;
     height: string;
-    startConc: number;
-    endConc: number;
-    showDivider: boolean;
+    leftColor: string;
+    rightColor: string;
+    content: string;
   }
  */
 function cell(props) {
+  const { width, height } = props;
   return div({
     display: 'inline-block',
     position: 'relative',
     border: '1px solid #444',
-    background: 'linear-gradient(to right,'+rgb(props.startConc)+','+rgb(props.endConc)+')',
-    ...props
-  }, props.organellas.map(organella).join('') );
+    padding: 2,
+    background: 'linear-gradient(to right,'+props.leftColor+','+props.rightColor+')',
+    width, height
+  }, props.content || '');
 }
 
 function activeCell(props) {
   cellAction(props);
-  const { width, height, startConc, endConc } = props;
+  const { width, height } = props;
+  const produceSubstance = produce(props);
   return cell({
     width, height,
-    startConc, endConc,
-    organellas: props.organellas
+    leftColor: rgb(props.startConc),
+    rightColor: rgb(props.endConc),
+    content: divs(props.organellas, o => {
+      o.produce = produceSubstance;
+      return activeOrganella(o);
+    })
   });
 }
 
 function cells(props) {
-  return props.map(activeCell).join('');
+  return divs(props, activeCell);
 }
 
 function render(props) {
