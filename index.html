@@ -14,9 +14,9 @@ function getCellDefaultState(parent = null) {
     growingSpeed: 0.2,
     width: 20,
     height: 20,
+    // reducingSpeed: -0.5,
     maxWidthBeforeDivide: 40,
-    reducingSpeed: -0.5,
-    organellas: [],
+    organellas: [{substance: 'energy'}],
     divider: {substance: 'divider', color: 'red', width: 10, height: 10},
     initConc: 0.1,
     get startConc() {
@@ -92,7 +92,7 @@ function cellAction(props) {
 // --- organella actions
 
 const produce = containerProps => substance => {
-  let conc = containerProps.substances[substance];
+  let conc = containerProps.substances[substance] || 0;
   if (conc < 0) {
     containerProps.substances[substance] = 0;
     return;
@@ -153,7 +153,7 @@ function activeOrganella(props) {
     width, height, color
   } = props;
   produce(substance);
-  return organella({ width, height, color });
+  return color ? organella({ width, height, color }) : '';
 }
 
 /**
@@ -196,8 +196,27 @@ function cells(props) {
   return divs(props, activeCell);
 }
 
+// --- info
+
+function showInfo(props) {
+  const keys = Object.keys(props);
+  return divs(keys, key => {
+    return div({padding: 5, border: '1px solid #888'}, key + ': ' + props[key]);
+  });
+}
+
+function info(props) {
+  const { startConc, endConc, concLength, substances } = props.cells[0];
+  return div(
+    { 'margin-top': 20 },
+    showInfo({ startConc, endConc, concLength, title: 'substances' }) + showInfo(substances)
+  );
+}
+
+// --- main
+
 function render(props) {
-  return cells(props.cells);
+  return cells(props.cells) + info(state);
 }
 
 function main() {
