@@ -9,12 +9,14 @@ function getCellDefaultState() {
     height: 20,
     maxWidthBeforeDivide: 40,
     reducingSpeed: -0.5,
+    organellas: [],
+    divider: {color: 'red', width: 10, height: 10, top: 5, left: 5},
+    initConc: 0.2,
     startConc: 1,
-    endConc: 0,
-    concLength: 100,
-    get concPerPix() {
-      return 1 / this.concLength;
-    }
+    get endConc() {
+      return this.startConc - this.width / this.concLength;
+    },
+    concLength: 100
   };
 }
 
@@ -30,10 +32,7 @@ const state = getDefaultState();
 // --- cell actions
 
 function modWidth(props) {
-  props.endConc = props.startConc - props.width * props.concPerPix;
-  if (props.endConc < 0) {
-    props.endConc = 0;
-  } else {
+  if (props.endConc >= 0) {
     props.width += props[props.type + 'Speed'];
   }
 }
@@ -41,7 +40,6 @@ function modWidth(props) {
 function divide(props) {
   if (state.cells.length < state.maxCells) {
     const newCell = getCellDefaultState();
-    props.endConc /= 2;
     newCell.startConc = props.endConc;
     state.cells.push(newCell);
     props.width /= 2;
@@ -57,6 +55,7 @@ function cellAction(props) {
   let nextType;
   switch (props.type) {
     case 'default':
+      props.organellas.push(props.divider);
       nextType = 'growing';
       break;
     case 'growing':
@@ -116,37 +115,33 @@ function organella(props) {
   });
 }
 
-function dividerOrgan() {
-  return organella({
-    color: 'red',
-    width: 10,
-    height: 10,
-    top: 5,
-    left: 5
-  });
-}
-
 /**
  * props: {
     width: string;
     height: string;
     startConc: number;
     endConc: number;
+    showDivider: boolean;
   }
  */
 function cell(props) {
   return div({
+    display: 'inline-block',
     position: 'relative',
     border: '1px solid #444',
     background: 'linear-gradient(to right,'+rgb(props.startConc)+','+rgb(props.endConc)+')',
     ...props
-  }, props.startConc < 0.2 ? dividerOrgan() : '');
+  }, props.organellas.map(organella).join('') );
 }
 
 function activeCell(props) {
   cellAction(props);
   const { width, height, startConc, endConc } = props;
-  return cell({ width, height, startConc, endConc });
+  return cell({
+    width, height,
+    startConc, endConc,
+    organellas: props.organellas
+  });
 }
 
 function cells(props) {
