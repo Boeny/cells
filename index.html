@@ -16,7 +16,7 @@ function getCellDefaultState(parent = null) {
     height: 20,
     // reducingSpeed: -0.5,
     maxWidthBeforeDivide: 40,
-    organellas: [{substance: 'energy'}],
+    organellas: [],
     divider: {substance: 'divider', color: 'red', width: 10, height: 10},
     initConc: 0.1,
     get startConc() {
@@ -26,9 +26,18 @@ function getCellDefaultState(parent = null) {
       this.substances['divider'] = conc;
     },
     get endConc() {
-      return this.concLength > 0 ? this.startConc - this.width / this.concLength : 0;
+      const length = this.concLength;
+      if (length <= this.width) {
+        return 0;
+      }
+      return this.startConc - this.width / length;
     },
-    concLength: 10,
+    get midConc() {
+      return (this.startConc + this.endConc) / 2;
+    },
+    get concLength() {
+      return this.startConc * this.maxWidthBeforeDivide;
+    },
     substances: {}
   };
 }
@@ -48,8 +57,12 @@ function modWidth(props) {
 }
 
 function divide(props) {
+  const midConc = props.midConc;
   props.width /= 2;
+  
   const newCell = getCellDefaultState(props);
+  newCell.startConc = midConc;
+
   const index = state.cells.indexOf(props) + 1;
   state.cells.splice(index, 0, newCell);
 }
@@ -65,6 +78,9 @@ function cellAction(props) {
       if (props.startConc < props.initConc) {
         props.startConc = 0;
         props.organellas.push(props.divider);
+        if (props.parent) {
+          return;// second head
+        }
       }
       props.type = 'growing';
       break;
@@ -75,7 +91,7 @@ function cellAction(props) {
       }
       break;
     case 'division':
-      if (props.endConc > 0) {
+      if (props.midConc > 0) {
         divide(props);
         props.type = 'growing';
       }
@@ -101,7 +117,6 @@ const produce = containerProps => substance => {
   conc += speed;
   if (conc > 1) {
     containerProps.substances[substance] = 1;
-    containerProps.concLength += 1;
     return;
   }
   containerProps.substances[substance] = conc;
