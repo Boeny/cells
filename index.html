@@ -26,17 +26,10 @@ function getCellDefaultState(parent = null) {
       this.substances['divider'] = conc;
     },
     get endConc() {
-      const length = this.concLength;
-      if (length <= this.width) {
-        return 0;
-      }
-      return this.startConc - this.width / length;
+      return this.startConc / this.width;
     },
     get midConc() {
-      return (this.startConc + this.endConc) / 2;
-    },
-    get concLength() {
-      return this.startConc * this.maxWidthBeforeDivide;
+      return this.endConc * 2;
     },
     substances: {}
   };
