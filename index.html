@@ -18,7 +18,7 @@ function getCellDefaultState(parent = null) {
     maxWidthBeforeDivide: 40,
     organellas: [],
     divider: {substance: 'divider', color: 'red', width: 10, height: 10},
-    initConc: 0.1,
+    initConc: 1/40,
     get startConc() {
       return this.substances['divider'] || 0;
     },
@@ -69,7 +69,6 @@ function cellAction(props) {
   switch (props.type) {
     case 'default':
       if (props.startConc < props.initConc) {
-        props.startConc = 0;
         props.organellas.push(props.divider);
         if (props.parent) {
           return;// second head
