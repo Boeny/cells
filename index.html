@@ -12,7 +12,7 @@ function getCellDefaultState(parent = null) {
     type: 'default',
     parent,
     child: null,
-    growingSpeed: 0.1,
+    growingSpeed: 15,
     width: 15,
     height: 15,
     reducingSpeed: 0,
@@ -20,7 +20,7 @@ function getCellDefaultState(parent = null) {
     organellas: [],
     divider: {substance: 'divider', color: 'red', width: 5, height: 5, float: 'left'},
     tail: {substance: 'tail', color: 'green', width: 5, height: 5, float: 'right'},
-    initConc: 1/30,
+    initConc: 1/50,
     get startConc() {
       return this.substances['divider'] || 0;
     },
@@ -82,6 +82,7 @@ function die(props) {
 }
 
 function cellAction(props) {
+  debugger;
   switch (props.type) {
     case 'default':
       if (props.startConc < props.initConc) {
@@ -127,7 +128,7 @@ const produce = containerProps => substance => {
     containerProps.substances[substance] = 0;
     return;
   }
-  const speed = conc < 0.5 ? 0.1 : (1 - conc)/5;
+  const speed = 1;// conc < 0.5 ? 0.1 : (1 - conc)/5;
   conc += speed;
   if (conc > 1) {
     containerProps.substances[substance] = 1;
@@ -236,17 +237,17 @@ function showInfo(props) {
 }
 
 function info(props) {
-  const { startConc, midConc, endConc, substances } = props.cells[0];
+  const { type, initConc, startConc, midConc, endConc, substances } = props;
   return div(
     { 'margin-top': 20 },
-    showInfo({ startConc, midConc, endConc, title: 'substances' }) + showInfo(substances)
+    showInfo({ type, initConc, startConc, midConc, endConc, title: 'substances' }) + showInfo(substances)
   );
 }
 
 // --- main
 
 function render(props) {
-  return cells(props.cells) + info(state);
+  return cells(props.cells) + divs(state.cells, info);
 }
 
 function main() {
