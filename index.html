@@ -11,14 +11,16 @@ function getCellDefaultState(parent = null) {
   return {
     type: 'default',
     parent,
-    growingSpeed: 0.2,
-    width: 20,
-    height: 20,
-    // reducingSpeed: -0.5,
-    maxWidthBeforeDivide: 40,
+    child: null,
+    growingSpeed: 0.1,
+    width: 15,
+    height: 15,
+    reducingSpeed: 0,
+    maxWidthBeforeDivide: 30,
     organellas: [],
-    divider: {substance: 'divider', color: 'red', width: 10, height: 10},
-    initConc: 1/40,
+    divider: {substance: 'divider', color: 'red', width: 5, height: 5, float: 'left'},
+    tail: {substance: 'tail', color: 'green', width: 5, height: 5, float: 'right'},
+    initConc: 1/30,
     get startConc() {
       return this.substances['divider'] || 0;
     },
@@ -37,27 +39,41 @@ function getCellDefaultState(parent = null) {
 
 function getDefaultState() {
   return {
-    cells: [getCellDefaultState()]
+    cells: [getCellDefaultState()],
+    maxCount: 10
   };
 }
 
 const state = getDefaultState();
 
+
+// ---------
 // --- cell actions
 
 function modWidth(props) {
   props.width += props[props.type + 'Speed'];
+  if (props.child) {
+    props.child.startConc = props.endConc;
+  }
+  if (props.parent && props.substances['tail']) {
+    props.parent.substances['tail'] = props.substances['tail'] / props.width;
+  }
 }
 
 function divide(props) {
+  if (state.cells.length >= state.maxCount) {
+    return 'reducing';
+  }
   const midConc = props.midConc;
   props.width /= 2;
   
   const newCell = getCellDefaultState(props);
   newCell.startConc = midConc;
+  props.child = newCell;
 
   const index = state.cells.indexOf(props) + 1;
   state.cells.splice(index, 0, newCell);
+  return 'growing';
 }
 
 function die(props) {
@@ -71,6 +87,8 @@ function cellAction(props) {
       if (props.startConc < props.initConc) {
         props.organellas.push(props.divider);
         if (props.parent) {
+          props.parent.organellas.push(props.tail);
+          props.parent = null;
           return;// second head
         }
       }
@@ -78,14 +96,16 @@ function cellAction(props) {
       break;
     case 'growing':
       modWidth(props);
+      if (props.width >= props.maxWidth) {
+        props.type = 'reducing';
+      }
       if (props.width >= props.maxWidthBeforeDivide) {
         props.type = 'division';
       }
       break;
     case 'division':
-      if (props.midConc > 0) {
-        divide(props);
-        props.type = 'growing';
+      if (props.midConc > 0 && !props.substances['tail']) {
+        props.type = divide(props);
       }
       break;
     case 'reducing':
@@ -97,6 +117,8 @@ function cellAction(props) {
   }
 }
 
+
+// ---------
 // --- organella actions
 
 const produce = containerProps => substance => {
@@ -114,6 +136,8 @@ const produce = containerProps => substance => {
   containerProps.substances[substance] = conc;
 }
 
+
+// ---------
 // --- utils
 
 function style(o) {
@@ -135,6 +159,8 @@ function divs(arr, forEachDiv) {
   return arr.map(forEachDiv).join('');
 }
 
+
+// ---------
 // --- views
 
 /**
@@ -155,12 +181,9 @@ function organella(props) {
 }
 
 function activeOrganella(props) {
-  const {
-    produce, substance,
-    width, height, color
-  } = props;
+  const { produce, substance, ...rest } = props;
   produce(substance);
-  return color ? organella({ width, height, color }) : '';
+  return props.color ? organella(rest) : '';
 }
 
 /**
@@ -213,10 +236,10 @@ function showInfo(props) {
 }
 
 function info(props) {
-  const { startConc, endConc, concLength, substances } = props.cells[0];
+  const { startConc, midConc, endConc, substances } = props.cells[0];
   return div(
     { 'margin-top': 20 },
-    showInfo({ startConc, endConc, concLength, title: 'substances' }) + showInfo(substances)
+    showInfo({ startConc, midConc, endConc, title: 'substances' }) + showInfo(substances)
   );
 }
 
