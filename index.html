@@ -18,14 +18,14 @@ function getCellDefaultState(parent = null) {
     reducingSpeed: 0,
     maxWidthBeforeDivide: 30,
     organellas: [],
-    divider: {substance: 'divider', color: 'red', width: 5, height: 5, float: 'left'},
+    direction: {substance: 'direction', color: 'red', width: 5, height: 5, float: 'left'},
     tail: {substance: 'tail', color: 'green', width: 5, height: 5, float: 'right'},
     initConc: 1/50,
     get startConc() {
-      return this.substances['divider'] || 0;
+      return this.substances['direction'] || 0;
     },
     set startConc(conc) {
-      this.substances['divider'] = conc;
+      this.substances['direction'] = conc;
     },
     get endConc() {
       return this.startConc / this.width;
@@ -82,11 +82,10 @@ function die(props) {
 }
 
 function cellAction(props) {
-  debugger;
   switch (props.type) {
     case 'default':
       if (props.startConc < props.initConc) {
-        props.organellas.push(props.divider);
+        props.organellas.push(props.direction);
         if (props.parent) {
           props.parent.organellas.push(props.tail);
           props.parent = null;
